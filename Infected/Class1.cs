@@ -310,6 +310,9 @@ namespace Infected
 				{
 					BecomeNormal();
 				}
+				// Called either way, no need to repeat 
+				FusionPlayer.SetAmmo(0);
+				FusionPlayer.SetMortality(true);
 			}
 		}
 
@@ -352,8 +355,6 @@ namespace Infected
 		// Logic for becoming infected. Removes your ammo, makes you mortal, and sets your health to 1.5x. Will also give you a knife.
 		public void BecomeInfected()
 		{
-			FusionPlayer.SetAmmo(0);
-			FusionPlayer.SetMortality(true);
 			FusionPlayer.SetPlayerVitality(1.5f);
 
 			if (isInfRevealed)
@@ -380,8 +381,6 @@ namespace Infected
 		{
 			if (!isPlayerMortal)
 			{
-				FusionPlayer.SetAmmo(0);
-				FusionPlayer.SetMortality(true);
 				FusionPlayer.SetPlayerVitality(1);
 				isPlayerMortal = true;
 				
@@ -463,6 +462,8 @@ namespace Infected
 						isPopup = true
 					});
 				}
+				// Bit Reward
+				RewardBits();
 			}
 			else
 			{
@@ -478,6 +479,36 @@ namespace Infected
 
 			gameOverSatisfied = false;
 			infWin = false;
+		}
+
+		private void RewardBits() {
+
+			int reward, floor, roof;
+
+			if(infectedPlayers.Contains(PlayerIdManager.LocalID) && infWin) {
+				// Infected win, player was infected
+				floor = 20;
+				roof = 135;
+
+			} else if (!infectedPlayers.Contains(PlayerIdManager.LocalId) && !infWin){
+				// Survivor win, player was not infected
+				floor = 50;
+				roof = 200;
+
+			} else {
+				// Survivor win, player was infected
+				floor = 20;
+				roof = 100;
+			}
+			reward = Random.Range(floor, roof);
+			FusionNotifier.Send(new FusionNotification()
+                {
+                    title = "You won " + reward + " bits!",
+                    showTitleOnPopup = true,
+                    popupLength = 3f,
+                    isMenuItem = false,
+                    isPopup = true,
+                });
 		}
 
 		protected override void OnUpdate() 
