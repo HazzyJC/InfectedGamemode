@@ -12,15 +12,16 @@ using LabFusion.Extensions;
 using LabFusion.Network;
 using LabFusion.Representation;
 using LabFusion.SDK.Gamemodes;
+using LabFusion.SDK.Points;
 using LabFusion.Senders;
 using LabFusion.Utilities;
 using MelonLoader;
+using SLZ.Bonelab;
 using SLZ.Rig;
 using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.UI;
 using Avatar = SLZ.VRMK.Avatar;
-using Random = UnityEngine.Random;
 
 namespace Infected
 {
@@ -31,26 +32,14 @@ namespace Infected
 			GamemodeRegistration.LoadGamemodes(Assembly.GetExecutingAssembly());
 			var assetBundle = EmbeddedAssetBundle.LoadFromAssembly(System.Reflection.Assembly.GetExecutingAssembly(), "Infected.Resources.megabundle.bigpack");
 			InfectedGamemode.BeginningAudioClip = assetBundle.LoadPersistentAsset<AudioClip>("assets/sfxforinf/beginningtrack.mp3");
-			if (InfectedGamemode.BeginningAudioClip != null)
-			{
-				MelonLogger.Msg("Beginning audio is NOT null bgurh");
-			}
 			InfectedGamemode.ActionMusic = assetBundle.LoadPersistentAsset<AudioClip>("assets/sfxforinf/actiontrack.wav");
-			if (InfectedGamemode.ActionMusic != null)
-			{
-				MelonLogger.Msg("Action audio is NOT null bgurh");
-			}
 			InfectedGamemode.InfectedImage = assetBundle.LoadPersistentAsset<Texture2D>("assets/sfxforinf/inficon.png");
-			if (InfectedGamemode.InfectedImage != null)
-			{
-				MelonLogger.Msg("Image is NOT null bgurh");
-			}
 		}
 
 		public override void OnLateInitializeMelon()
 		{
 			HarmonyInstance.Patch(typeof(Avatar).GetMethod(nameof(Avatar.ComputeBaseStats), AccessTools.all), null, new HarmonyMethod(typeof(Patch).GetMethod(nameof(Patch.PostFix))));
-			
+			HarmonyInstance.Patch(typeof(HeadTitles).GetMethod(nameof(HeadTitles.Start), AccessTools.all), null, new HarmonyMethod(typeof(P_HeadTitles_Awake).GetMethod(nameof(P_HeadTitles_Awake.Postfix))));
 		}
 	}
 	
@@ -58,13 +47,11 @@ namespace Infected
 	{
 		public static void PostFix(Avatar __instance)
 		{
-			MelonLogger.Msg("changing speed");
 			if (InfectedGamemode.shouldModifySpeed)
 			{
 				__instance._speed *= 1.5f;
 				__instance._agility *= 1.5f;
 				__instance._strengthLower *= 1.5f;
-				MelonLogger.Msg("changed speed");
 			}
 		}
 	}
@@ -82,6 +69,16 @@ namespace Infected
 			return null;
 		}
 	}
+	
+	public static class P_HeadTitles_Awake
+	{
+		public static void Postfix(HeadTitles __instance)
+		{
+			__instance.text_Title.richText = true;
+			__instance.text_SubTitle.richText = true;
+		}
+	}
+	
 	public class InfectedGamemode : Gamemode
 	{
 		public static AudioClip BeginningAudioClip;
@@ -95,7 +92,7 @@ namespace Infected
 		public const string PlayerInfKey = DefaultPrefix + ".InfectionState";
 		
 		public override string GamemodeCategory => "Infected";
-		public override string GamemodeName => "1 Infected";
+		public override string GamemodeName => "Infected";
 		
 		public override bool AutoStopOnSceneLoad => true;
 		public override bool DisableSpawnGun => true;
@@ -259,12 +256,10 @@ namespace Infected
 				// if it doesnt then it will add it to the array
 				string[] split = key.Split('.');
 				PlayerId THEPLAYER = PlayerIdManager.GetPlayerId(ulong.Parse(split[2]));
-				MelonLogger.Msg("Adding infected player with ID " + split[2]);
 				if (!infectedPlayers.Contains(THEPLAYER))
 				{
 					infectedPlayers.Add(PlayerIdManager.GetPlayerId(ulong.Parse(split[2])));
 					
-					MelonLogger.Msg("Infected player count = " + infectedPlayers.Count);
 					if (infectedPlayers.Count == allPlayers.Count && IsActive())
 					{
 						gameOverSatisfied = true;
@@ -316,14 +311,12 @@ namespace Infected
 		protected override void OnStartGamemode()
 		{
 			base.OnStartGamemode();
-			MelonLogger.Msg("Checking if server");
 			
 			SetPlaylist(DefaultMusicVolume, BeginningAudioClip);
 
 			foreach (var player in PlayerIdManager.PlayerIds)
 			{
-				allPlayers.Add(player);
-				MelonLogger.Msg("Added new player to all players. New player count is " + allPlayers.Count);
+				allPlayers.Add(player); 
 				if (player != PlayerIdManager.LocalId)
 				{
 					TeamLogoInstance teamLogoInstance = new TeamLogoInstance(player);
@@ -336,16 +329,12 @@ namespace Infected
 			if (NetworkInfo.IsServer)
 			{
 				// Rolls a random player to become infected when the game starts
-				MelonLogger.Msg("Doing a random range to get a random player");
 				System.Random random = new System.Random();
 				var infPlayerRange = random.Next(allPlayers.Count);
-				MelonLogger.Msg(infPlayerRange);
 				infectedPlayer = allPlayers[infPlayerRange];
-				MelonLogger.Msg("Done doing random check");
 				stopwatch = Stopwatch.StartNew();
 				
 				TrySetMetadata(GetInfKey(infectedPlayer), "INFECTED");
-				MelonLogger.Msg("Sent Metadata");
 			}
 		}
 
@@ -366,7 +355,7 @@ namespace Infected
 			isPlayerInfected = true;
 			SendNotificationPublic(new FusionNotification()
 			{
-				title = "YOU ARE INFECTED",
+				title = "YOU ARE <color=red>INFECTED",
 				showTitleOnPopup = true,
 				message = "KILL SURVIVORS TO WIN!",
 				isMenuItem = false,
@@ -387,7 +376,7 @@ namespace Infected
 				
 				SendNotificationPublic(new FusionNotification()
 				{
-					title = "YOU ARE A SURVIVOR",
+					title = "YOU ARE A <color=lime>SURVIVOR",
 					showTitleOnPopup = true,
 					message = "SURVIVE THE HOARD TO WIN!",
 					isMenuItem = false,
@@ -426,7 +415,6 @@ namespace Infected
 			FusionPlayer.ClearPlayerVitality();
 
 			isPlayerMortal = false;
-			isPlayerInfected = false;
 			infectedPlayers.Clear();
 			allPlayers.Clear();
 			shouldModifySpeed = false;
@@ -476,8 +464,61 @@ namespace Infected
 				});
 			}
 
+
+			if (gameOverSatisfied && PlayerIdManager.PlayerCount > 1)
+			{
+				if (isPlayerInfected && infWin)
+				{
+					System.Random random = new System.Random();
+					var rdmBits = random.Next(50, 100);
+					AwardBits(rdmBits, true);
+				}
+				else if (!infWin && isPlayerInfected)
+				{
+					System.Random random = new System.Random();
+					var rdmBits = random.Next(10, 60);
+					AwardBits(rdmBits, false);
+				}
+				else if (!infWin && !isPlayerInfected)
+				{
+					System.Random random = new System.Random();
+					var rdmBits = random.Next(75, 175);
+					AwardBits(rdmBits, true);
+				}
+			}
+			
+			isPlayerInfected = false;
 			gameOverSatisfied = false;
 			infWin = false;
+		}
+		
+		public void AwardBits(int bits, bool didWin)
+		{
+			if (didWin)
+			{
+				SendNotificationPublic(new FusionNotification()
+				{
+					title = $"YOU WON <color=lime>{bits}</color> bits!",
+					showTitleOnPopup = true,
+					message = "Congrats!",
+					isMenuItem = false,
+					isPopup = true,
+					popupLength = 3f
+				});
+			}
+			else
+			{
+				SendNotificationPublic(new FusionNotification()
+				{
+					title = $"YOU WON <color=lime>{bits}</color> bits",
+					showTitleOnPopup = true,
+					message = "Better luck next time..",
+					isMenuItem = false,
+					isPopup = true,
+					popupLength = 3f
+				});
+			}
+			PointItemManager.RewardBits(bits);
 		}
 
 		protected override void OnUpdate() 
