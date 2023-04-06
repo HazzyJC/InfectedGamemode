@@ -31,20 +31,9 @@ namespace Infected
 			GamemodeRegistration.LoadGamemodes(Assembly.GetExecutingAssembly());
 			var assetBundle = EmbeddedAssetBundle.LoadFromAssembly(System.Reflection.Assembly.GetExecutingAssembly(), "Infected.Resources.megabundle.bigpack");
 			InfectedGamemode.BeginningAudioClip = assetBundle.LoadPersistentAsset<AudioClip>("assets/sfxforinf/beginningtrack.mp3");
-			if (InfectedGamemode.BeginningAudioClip != null)
-			{
-				MelonLogger.Msg("Beginning audio is NOT null bgurh");
-			}
 			InfectedGamemode.ActionMusic = assetBundle.LoadPersistentAsset<AudioClip>("assets/sfxforinf/actiontrack.wav");
-			if (InfectedGamemode.ActionMusic != null)
-			{
-				MelonLogger.Msg("Action audio is NOT null bgurh");
-			}
 			InfectedGamemode.InfectedImage = assetBundle.LoadPersistentAsset<Texture2D>("assets/sfxforinf/inficon.png");
-			if (InfectedGamemode.InfectedImage != null)
-			{
-				MelonLogger.Msg("Image is NOT null bgurh");
-			}
+			MelonLogger.Msg("Assets imported succesfully");
 		}
 
 		public override void OnLateInitializeMelon()
@@ -58,13 +47,11 @@ namespace Infected
 	{
 		public static void PostFix(Avatar __instance)
 		{
-			MelonLogger.Msg("changing speed");
 			if (InfectedGamemode.shouldModifySpeed)
 			{
 				__instance._speed *= 1.5f;
 				__instance._agility *= 1.5f;
 				__instance._strengthLower *= 1.5f;
-				MelonLogger.Msg("changed speed");
 			}
 		}
 	}
